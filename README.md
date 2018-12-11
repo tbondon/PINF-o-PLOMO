@@ -1,1 +1,0 @@
-# PINF-o-PLOMO

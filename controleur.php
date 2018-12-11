@@ -1,6 +1,5 @@
 <?php
-
-	session_start();
+session_start();
 
 	include_once "libs/maLibUtils.php";
 	include_once "libs/maLibSQL.pdo.php";
@@ -8,355 +7,836 @@
 	include_once "libs/modele.php"; 
 
 	$addArgs = "";
+
 	if ($action = valider("action"))
 	{
 		ob_start ();
 		echo "Action = '$action' <br />";
-		switch ($action)
+		// ATTENTION : le codage des caractères peut poser PB si on utilise des actions comportant des accents... 
+		// A EVITER si on ne maitrise pas ce type de problématiques
+
+		/* TODO: A REVOIR !!
+		// Dans tous les cas, il faut etre logue... 
+		// Sauf si on veut se connecter (action == Connexion)
+
+		if ($action != "Connexion") 
+			securiser("login");
+		*/
+
+		// Un paramètre action a été soumis, on fait le boulot...
+		switch($action)
 		{
-			// Connection ///////////////////////////////////////////////////
+			
+			
+			// Connexion //////////////////////////////////////////////////
 			case 'Connexion' :
 				// On verifie la presence des champs login et passe
 				if ($login = valider("login"))
-				if ($passe = valider("passe"))
 				{
-					if (verifadmin($login,$passe))
+					if ($passe = valider("passe"))
 					{
-						if (valider("remember")) 
+					$passe=md5($passe);
+						// On verifie l'utilisateur, 
+						// et on crée des variables de session si tout est OK
+						// Cf. maLibSecurisation
+						if (verifUser($login,$passe)==1)
 						{
-							setcookie("login",$login , time()+60*60*24*30);
-							setcookie("passe",$password, time()+60*60*24*30);
-							setcookie("remember",true, time()+60*60*24*30);
-						} 
-						else 
-						{
-							setcookie("login","", time()-3600);
-							setcookie("passe","", time()-3600);
-							setcookie("remember",false, time()-3600);
-						}
-					}
-					// On verifie l'utilisateur, 
-					// et on crée des variables de session si tout est OK
-					// Cf. maLibSecurisation
-					elseif (verifUser($login,$passe)) 
-					{
-						if (verifblack($login,$passe))
-						{
-							if (valider("remember")) 
-							{
-								setcookie("login",$login , time()+60*60*24*30);
-								setcookie("passe",$password, time()+60*60*24*30);
-								setcookie("remember",true, time()+60*60*24*30);
-							}
-							else 
-							{
-								setcookie("login","", time()-3600);
-								setcookie("passe","", time()-3600);
-								setcookie("remember",false, time()-3600);
-							}
-						}
-						else $addArgs="?view=connectpage&echec=2";
-					}
-					else $addArgs="?view=connectpage&echec=1";
-				}
-			break;
-
-			// Deconnexion //////////////////////////////////////////////////
-			case 'Logout' :
-				session_destroy();
-			break;
-
-			// Inscription //////////////////////////////////////////////////
-			case 'Inscription' :
-				$addArgs="?view=signupage";
-				// on verifie le pseudo, le mail, le mot de passe et la confirmation du mot de passe
-				if ($pseudo = valider("pseudo"))
-				if ($mail = valider("mail"))
-				if ($passe = valider("passe"))
-				if ($passe_confirm = valider("passe_confirm"))
-				{
-					// on verifie que les 2 mots de passe concordent
-					if ($passe==$passe_confirm)
-					{
-						if (test_pseudo($pseudo) == false)
-						{
-							if (test_mail($mail) == false)
-							{
-								if (strlen($passe) >= 5)
-								{
-									// si le pseudo et l'email ne sont pas déja utilisé et que le mot de passe contient au minimum 5 characteres, on créer un nouveau user avec les données saisies
-									insertUser ($pseudo,$mail,$passe);
-									// on le renvoie sur la page de connexion en lui affichant un message de succès 
-									$addArgs="?view=connectpage&suc=1";
-								}
-								else $addArgs=$addArgs."&err=4";	
-							}
-							// on le renvoie sur la page d'inscription avec un message d'échec suivant l'échec
-							else $addArgs=$addArgs."&err=3";
-						}
-						else $addArgs=$addArgs."&err=2";
-					}
-					else $addArgs=$addArgs."&err=1";
 							
+								// tout s'est bien passé, doit-on se souvenir de la personne ? 
+								if (valider("remember")) 
+								{
+									setcookie("login",$login , time()+60*60*24*30);
+									setcookie("passe",$passe, time()+60*60*24*30);
+									setcookie("remember",true, time()+60*60*24*30);
+								}
+								else
+								{
+									
+									setcookie("login","", time()-3600);
+									setcookie("passe","", time()-3600);
+									setcookie("remember",false, time()-3600);
+								}
+					
+								$id=valider("id_joueur","SESSION");
+								connecterUtilisateur($id);
+								
+								
+									
+						}
+					
+						else if(verifUser($login,$passe) == 5 ) $addArgs = "?view=login&date=1";
+						else $addArgs = "?view=login&variable=1";	
+					}
+					else $addArgs = "?view=login&variable=1";
 				}
+				else $addArgs = "?view=login&variable=1";	
 			break;
 
-			// Soumettre //////////////////////////////////////////////////
-			case 'soumettre' :
-				$mail=$_SESSION["mail"] ;
-				// si l'utilisateur a coché la case "mail modération" on affecre à la variable moderation 1 sinon on lui affecte 0
-				if ($moderation = valider("case_mail"))
-					$moderation = 1;
+			case 'Logout' :
+				$id=valider("id_joueur","SESSION");
+				deconnecterUtilisateur($id);
+				session_destroy();
+				
+			break;
+
+			case 'Envoyer Ressources':
+				if (!empty($_FILES["FileToUpload"]))
+					{
+						
+						if (is_uploaded_file($_FILES["FileToUpload"]["tmp_name"]))
+						{	
+							$id=valider('user');
+							$titre=valider('nom');
+							$name = $_FILES["FileToUpload"]["name"];
+							copy($_FILES["FileToUpload"]["tmp_name"],"ressourcesProfil/$name");
+							envoyerRessources($name,$id,$titre);
+							$addArgs = "?view=envoyerressources&variable=Succes";
+		
+						}	
+						else
+						{
+								$addArgs = "?view=envoyerressources&var=Error";
+						}
+					}
 				else
-					$moderation = 0;
-				$mess=($_POST["message"]);
-				$long=mb_strlen($mess,'utf-8');
-				// on verifie le sujet(catégorie), le message et le pseudo
-				if ($sujet = valider("sujet"))
-				if ($message = valider("message"))
-				if ($pseudo = valider("pseudo"))
-				{
-					if (verifPseudo($pseudo,$mail)) 
+						$addArgs = "?view=envoyerressources&var=Error";
+			break;
+
+			
+			case 'Inscription' :
+				// On verifie la presence des champs login et passe
+						
+				
+				
+				if ($login = valider("login")){
+					if(SQLGetChamp("Select pseudo_user from users where pseudo_user='$login'"))
 					{
-						if ($long<=300)
-						{
-							$msg=htmlspecialchars($message);
-							// si le couple mail/pseudo est vérifié on insert la vdm2i dans la base de données
-							insertVdm ($pseudo,$msg,$sujet,$moderation);
-						}
-						else $addArgs="?view=soumettrevdm&error=2";	
+						rediriger("index.php?view=inscriptionadmin&variable=Error");	
 					}
-					// sinon on renvoie l'uilisateur sur la même page en lui affichant un message d'erreur
-					else $addArgs="?view=soumettrevdm&error=1";	
+					else if( $passe = valider("passe")){
+							if( $nom = valider("nom")){
+								if( $matricule = valider("matricule")){
+									if( $prenom = valider("prenom")){
+										if( $mail = valider("mail")){
+											if( $programme = valider("programme")){
+												if( $date = valider("date") ){
+													if( $admin = valider("admin"))
+													{
+															if($admin == 2)
+																$admin=0;
+															$passe=md5($passe);
+															creerUser($login,$passe,$nom,$prenom,$mail,$admin,$programme,$date,$matricule); 
+															$addArgs = "?view=inscriptionadmin&var=succes";
+														
+													}
+													else 
+														$addArgs = "?view=inscriptionadmin&variable=Error";
+												}else 
+													$addArgs = "?view=inscriptionadmin&variable=Error";
+											}else 
+												$addArgs = "?view=inscriptionadmin&variable=Error";
+										}else 
+											$addArgs = "?view=inscriptionadmin&variable=Error";
+									}else 
+										$addArgs = "?view=inscriptionadmin&variable=Error";
+								}else 
+									$addArgs = "?view=inscriptionadmin&variable=Error";
+							}else 
+								$addArgs = "?view=inscriptionadmin&variable=Error";
+						}else 
+							$addArgs = "?view=inscriptionadmin&variable=Error";
+					}else 
+						$addArgs = "?view=inscriptionadmin&variable=Error";
+				
+			break; 
+			
+			
+			case "Valider" : 
+			if ($id_joueur = valider("id_joueur"))
+				validerUtilisateur($id_joueur);
+			$addArgs = "?view=admin";
+			break; 
+			
+			
+
+			case "Blacklister" : 
+			if ($id_joueur = valider("id_joueur"))
+				interdireUtilisateur($id_joueur);
+			$addArgs = "?view=admin";
+			break; 
+			
+			case "Rendre Admin" : 
+			if ($id_joueur = valider("id_joueur")){
+				rendreAdminUtilisateur($id_joueur);
+			}
+			$addArgs = "?view=partieadmin";
+			break; 
+			
+			case "Rendre Non Admin" : 
+			if ($id_joueur = valider("id_joueur"))
+				rendreNonAdminUtilisateur($id_joueur);
+			$addArgs = "?view=partieadmin";
+			break;
+
+			case "Supprimer" : 
+			if ($id_joueur = valider("id_joueur"))
+				supprimerUtilisateur($id_joueur);
+			$addArgs = "?view=partieadmin";
+			break; 
+			
+			case "Réactiver" : 
+			if ($id_joueur = valider("id_joueur"))
+				autoriserUtilisateur($id_joueur);
+			$addArgs = "?view=partieadmin";
+			break; 
+			
+			case "Modifier le mdp":
+			if ($ancienmdp = valider("ancienmdp")){
+			if ($id = valider("id")){
+				$ancienmdp=md5($ancienmdp);
+				$login=SQLGetChamp("Select pseudo_user from users where id_user='$id'");
+				if(verifUserBdd($login,$ancienmdp)){
+				if ($mdp = valider("mdp"))	{
+						if ($mdp2= valider("mdpCheck"))	{
+								if($mdp == $mdp2){
+							$mdp=md5($mdp);
+							updateMDPBDD($mdp,$id);
+							$addArgs = "?view=monprofil&var=succes";	
+			}else 	
+				$addArgs = "?view=monprofil&variable=Error";
+			}else	
+				$addArgs = "?view=monprofil&variable=Error";
+			}else 	
+				$addArgs = "?view=monprofil&variable=Error";
+			}else 	
+				$addArgs = "?view=monprofil&variable=Error";
+			}else 	
+				$addArgs = "?view=monprofil&variable=Error";
+			}else 	
+				$addArgs = "?view=monprofil&variable=Error";
+			break;
+			
+			case 'Supprimer cette ressource':
+				if ($id_ressource = valider("id_ressource")){
+					deleteRessource($id_ressource);
+					$addArgs = "?view=mesressources&var=Succes";
 				}
+				else
+					$addArgs = "?view=mesressources&variable=Error";
+				
 			break;
-
-			// Choic catégorie /////////////////////////////////////////////////
-			case 'choix_cat' :
-				if ($nom_cat =valider("nom_cat"))
-					$addArgs="?view=homepage&cat=$nomcat";
-				// on renvoie l'utilisateur sur la page d'acceuil avec comme parametre la categorie choisit
-			break;
-
-			// Validation du post /////////////////////////////////////////////////////
-			case 'valid_post' :
-				// on verifie l'id de la vdm2i et le mail
-				if ($id_vdm = valider("id_vdm"))
-				if ($mail = valider("mail"))
-				if ($cat = valider("cat"))
-				{
-					$option="valid";
-					postvalid($id_vdm,$option);
-					if (verifmoderation($id_vdm))
-					{
-						// si la vdm2i a été modéré on envoie un mail à celui qui posté la vdm2i
-						$objet='Votre vdm2i a bien ete prise en compte';
-						$messageHTML="<p> Bonjour votre vdm2i a bien ete prise en compte ! Merci de votre contribution. L'équipe vdm2i</p>";
-						$messageNormal="Bonjour votre vdm2i a bien ete prise en compte ! Merci de votre contribution. L'équipe vdm2i";
-						sendMail($mail,$objet,$messageHTML,$messageNormal);
-					}
-					$addArgs="?view=homepage&cat=cat2";
-				}
-			break;
-
-			// Suppression du post /////////////////////////////////////////////////////
-			case 'supp_post' :
-				if ($id_vdm = valider("id_vdm"))
-				if ($cat = valider("cat"))
+			
+			case 'Uploader' : 
+			if (!empty($_FILES["FileToUpload"]))
+			{
+			
+				if (is_uploaded_file($_FILES["FileToUpload"]["tmp_name"]))
 				{	
-					// si l'id de la vdm est valide on supprime la vdm2i
-					$option="supp";
-					postvalid($id_vdm,$option);
-				}
-				$addArgs="?view=homepage&cat=$cat";
-			break;
+					
+					$id=valider('id');
+					$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+					$extension_upload = strtolower(  substr(  strrchr($_FILES['FileToUpload']['name'], '.')  ,1)  );
+				
 
-			// Blacklistage /////////////////////////////////////////////////////
-			case 'gerer_user' :
-				$blacklist=$_POST["blacklist"];
-				$idUser=valider("id_user");
-				if(isset($blacklist))
-				{
-					if($blacklist==0) $act=0;
-					if($blacklist==1) $act=1;
-				}
-				if(isset($act) and isset($idUser))
-				{
-					if ($act==0) interdireUtilisateur($idUser);
-					elseif ($act==1) autoriserUtilisateur($idUser);
-				}
-				$addArgs="?view=homepage&cat=cat3";
-				// si l'utilisateur est blacklisté on le "remet normal", il n'est plus blacklisté.
-				// à l'inverse si il n'est blacklisté on le blacklist
-				// on renvoit l'admin sur la page d'acceuil avec la categorie blackliistage*/
-			break;
-
-			// LIKE /////////////////////////////////////////////////////
-			case 'put_like' :
-				$iduser=$_SESSION["idUser"];
-				if ($idvdm=valider('id_vdm'))
-				{
-					$like=likeornot($iduser,$idvdm);
-					$dislike=dislikeornot($iduser,$idvdm);
-					// si la personne a déja liké la vdm on fait une mise à jour de ses like
-					//sinon on insert son like 
-					if ($like==5)
-						putlike($idvdm,$iduser);
-					else
-						updatelike($like,$dislike,$idvdm,$iduser);
-				}
-				if ($page=valider('page')) $addArgs="?view=profil";
-				elseif ($cat=valider('cat')) $addArgs="?view=homepage&cat=$cat";
-			break;
-
-			// LIKE /////////////////////////////////////////////////////
-			case 'put_dislike' :
-				// même système que put_like mais pour les dislikes ici
-				$iduser=$_SESSION["idUser"];
-				if ($idvdm=valider('id_vdm'))
-				{
-					$like=likeornot($iduser,$idvdm);
-					$dislike=dislikeornot($iduser,$idvdm);
-					// si la personne a déja disliké la vdm on fait une mise à jour de ses dislike
-					//sinon on insert son dislike
-					if ($dislike==5)
-						putdislike($idvdm,$iduser);
-					else
-						updatedislike($like,$dislike,$idvdm,$iduser);
-				}
-				if ($page=valider('page')) $addArgs="?view=profil";
-				elseif ($cat=valider('cat')) $addArgs="?view=homepage&cat=$cat";
-			break;
-
-			// Changer Pseudo /////////////////////////////////////////////////////
-			case 'chang_pseudo' :
-				$iduser=$_SESSION["idUser"];
-				if ($pseudo=valider('pseudo'))
-				{
-					if (test_pseudo($pseudo) == false)
+					if ( in_array($extension_upload,$extensions_valides) ) 
 					{
-						// si le nouveau pseudo choisi n'est pas dejà utilisé on met à jour le pseudo, on renvoie l'utilisateur sur son profil et on change la variable de session pseudo
-						updatepseudo($iduser,$pseudo);
-						$addArgs="?view=profil&suc=1";
-						$_SESSION["pseudo"]=$pseudo;
-					}
-					// si le pseudo est dejà utilisé on renvoie l'utilisateur sur son profil avec un message d'erreur
-					else $addArgs="?view=profil&err=1";
+					//print("Quelques informations sur le fichier récupéré :<br>");
+					//print("Nom : ".$_FILES["FileToUpload"]["name"]."<br>");
+					//print("Type : ".$_FILES["FileToUpload"]["type"]."<br>");
+					//print("Taille : ".$_FILES["FileToUpload"]["size"]."<br>");
+					//print("Tempname : ".$_FILES["FileToUpload"]["tmp_name"]."<br>");
+					$name = $_FILES["FileToUpload"]["name"];
+					copy($_FILES["FileToUpload"]["tmp_name"],"ressources/$name");
+					UpdateImageBDD($name,$id);
+
 				}
-				else $addArgs="?view=profil&err=2";
+				else 
+					die("pb");
+				}
+				else
+				{
+					die("pb");
+				}
+				
+			}
+			$addArgs = "?view=formationadmin";
 			break;
 
-			// Changer mot de passe /////////////////////////////////////////////////////
-			case 'chang_mdp' :
-				$iduser=$_SESSION["idUser"];
-				if ($old_pass=valider('old_pass'))
-				if ($new_pass=valider('new_pass'))
-				if ($conf_pass=valider('conf_pass'))
+			case 'Uploader2' : 
+			if (!empty($_FILES["FileToUpload"]))
+			{
+				
+				if (is_uploaded_file($_FILES["FileToUpload"]["tmp_name"]))
+				{	
+					$id=valider('id');
+					$name = $_FILES["FileToUpload"]["name"];
+					copy($_FILES["FileToUpload"]["tmp_name"],"fichiers/$name");
+					UpdatePDFBDD($name,$id);
+
+				}	
+				else
 				{
-					if(strlen($new_pass)>=5)
+					die("pb");
+				}
+			}	
+			$addArgs = "?view=formationadmin";
+			break;
+			
+			case 'Modifier PDF Stat' : 
+			if (!empty($_FILES["FileToUpload"]))
+			{
+				
+				if (is_uploaded_file($_FILES["FileToUpload"]["tmp_name"]))
+				{	
+					$id=valider('id');
+					$name = $_FILES["FileToUpload"]["name"];
+					copy($_FILES["FileToUpload"]["tmp_name"],"fichiers/$name");
+					UpdatePDFstatBDD($name);
+
+				}	
+				else
+				{
+					die("pb");
+				}
+			}	
+			$addArgs = "?view=pagestatadmin";
+			break;
+
+			case "Affichage Formation visiteur" :
+			$addArgs = "?view=formation";
+			break;
+			
+			case "Affichage Stat visiteur" :
+			$addArgs = "?view=teststat";
+			break;
+			
+			case "Choix Formation CV" :
+					$valeur=valider('formation');
+			$addArgs = "?view=CVtheque&categorie=$valeur";
+			break;
+			
+			case "Affichage CV-theque visiteur" :
+			$addArgs = "?view=CVtheque";
+			break;
+			
+			case "Affichage Statistiques visiteur" :
+			$addArgs = "?view=pagestat";
+			break;
+
+			case "Modifier les champs" :
+				
+				$id=valider('id');
+				$nom=valider('nom');
+				$description=valider('description');
+				$session=valider('session');
+				updateChampsBDD($id,$nom,$description,$session);
+				$addArgs = "?view=formationadmin";
+			break;
+
+
+			
+			case "Ajouter Une Formation" :
+			if (!empty($_FILES["file"]))
+			{
+
+				if (is_uploaded_file($_FILES["file"]["tmp_name"][0]))
+				{	
+					
+					$name1 = $_FILES["file"]["name"][0];
+					copy($_FILES["file"]["tmp_name"][0],"fichiers/$name1");
+
+					$name2 = $_FILES["file"]["name"][1];
+					copy($_FILES["file"]["tmp_name"][1],"ressources/$name2");
+
+				}	
+				else
+				{
+					die("pb");
+				}
+			}
+			else
+				{
+					die("pb 1");
+				}
+			
+			$nom=valider('nomFormation');
+			$description=valider('descriptionFormation');
+			$session=valider('sessionFormation');
+			AjouterFormation($nom,$description,$session,'fichiers/'.$name1,'ressources/'.$name2);
+			$addArgs = "?view=formationadmin";
+			break;
+			
+			case "Ajouter un CV" :
+			if (!empty($_FILES["file"]))
+			{
+
+				if (is_uploaded_file($_FILES["file"]["tmp_name"][0]))
+				{	
+					
+					$name1 = $_FILES["file"]["name"][0];
+					copy($_FILES["file"]["tmp_name"][0],"fichiers/$name1");
+				}	
+				else
+				{
+					die("pb");
+				}
+			}
+			else
+				{
+					die("pb 1");
+				}
+			
+			$nom=valider('nomDiplome');
+			$prenom=valider('prenomDiplome');
+			$programme=valider('programme');
+			AjouterCV($nom,$prenom,$programme,$name1);
+			$addArgs = "?view=CVthequeAdmin";
+			break;
+			
+			case "Ajouter Une Stat" :
+			if($titre=valider('titre'))
+				if($pourcentage=valider('pourcentage')){
+					if($pourcentage <= 101){
+			AjouterBarre($titre,$pourcentage);
+			$addArgs = "?view=teststatadmin";
+				}
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";
+				}
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";	
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";	
+			break;
+			
+			case "Modifier Stat" :
+			if($titre=valider('titre'))
+				if($pourcentage=valider('pourcentage')){
+					if($id=valider('id_stat')){
+						if($pourcentage <= 101){
+			ModifierBarre($titre,$pourcentage,$id);
+			$addArgs = "?view=teststatadmin&success=1";
+				}
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";
+				}
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";	
+			}
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";	
+			else 
+				$addArgs = "?view=teststatadmin&variable=1";		
+			break;
+			
+			case "Supprimer cette Formation" :
+			$id=valider('id');
+			supprimerProgrammeBDD($id);
+			$addArgs = "?view=formationadmin";
+			break;
+			
+			case "Supprimer cette Stat" :
+			if($id=valider('id_stat')){
+			supprimerStat($id);
+			$addArgs = "?view=teststatadmin&success=1";
+			}
+			else
+			$addArgs = "?view=teststatadmin&variable=1";
+			break;
+			
+			case "Supprimer ce CV" :
+			$id=valider('id');
+			supprimerCVBDD($id);
+			$addArgs = "?view=CVthequeAdmin";
+			break;
+			
+			case 'suppFAQ':
+				//on efface la faq
+				//on verifie si les parametres sont ok
+				if($id_faq=valider("id_faq","POST"))
+				{
+					deleteFaq($id_faq);
+				}
+				
+			break;
+			case "addFAQ":
+				//on verifie si les parametres sont ok
+					if($question=valider("question_faq","POST"))
 					{
-						if($conf_pass==$new_pass)
+						if($reponse=valider("reponse_faq","POST"))
 						{
-							if (testmdp($old_pass,$iduser))
+							
+							addFaq($question,$reponse);	
+						}
+							
+					}
+				$addArgs="?view=faq";
+			break;
+			
+			case "updateQuestionFaq": 
+				//on verifie si les parametre sont ok
+				if($id_faq=valider("id_faq","POST"))
+				{
+					if($newQuestion=valider("newQuestion","POST"))
+					{
+						updateQuestionFaq($id_faq,$newQuestion);	
+					}
+				}
+			break;
+			case "updateReponseFaq":
+				//on verifie si les parametre sont ok
+					if($id_faq=valider("id_faq","POST"))
+					{
+						if($newReponse=valider("newReponse","POST"))
+						{
+							updateReponseFaq($id_faq,$newReponse);
+						}
+				}
+				
+			case "chargerPlusArticles":
+				getArticles($_POST["limit"],$_POST["offset"]);	
+			break;
+			case "creerArticle" :
+				
+			/*	if (!empty($_FILES["icone"]))
+			{
+
+				if (is_uploaded_file($_FILES["icone"]["tmp_name"]))
+				{
+					//print("Quelques informations sur le fichier récupéré :<br>");
+					//print("Nom : ".$_FILES["icone"]["name"]."<br>");
+					//print("Type : ".$_FILES["icone"]["type"]."<br>");
+					//print("Taille : ".$_FILES["icone"]["size"]."<br>");
+					//print("Tempname : ".$_FILES["icone"]["tmp_name"]."<br>");
+					$name = $_FILES["icone"]["name"];
+					copy($_FILES["icone"]["tmp_name"],"./ressources/$nomRep/$name");
+					//logo_copyright("./ressources/$nomRep/$name","./ressources/$nomRep/copyright$nomRep/$name");
+
+
+					$dataImg = getimagesize("./ressources/$nomRep/$name");  
+					$type= substr($dataImg["mime"],6);// on enleve "image/" 
+
+					 //creation de la miniature
+					miniature($type,"./ressources/$nomRep/$name",200,"./ressources/$nomRep/$name");
+
+					$dataImg = getimagesize("./ressources/$nomRep/copyright$nomRep/$name");  
+					$type= substr($dataImg["mime"],6);// on enleve "image/" 
+
+				}
+				else
+				{
+					die("problème de création d'image");
+				}
+			}*/
+				
+				  if(isset($_FILES["icone"]))
+				  {
+				
+				  		if ($_FILES['icone']['error'] > 0) $erreur = "Erreur lors du transfert";
+				  		if ($_FILES['icone']['size'] > 2000000) $erreur = "Le fichier est trop gros";
+				
+				  		$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+						//1. strrchr renvoie l'extension avec le point (« . »).
+						//2. substr(chaine,1) ignore le premier caractère de chaine.
+						//3. strtolower met l'extension en minuscules.
+						$extension_upload = strtolower(  substr(  strrchr($_FILES['icone']['name'], '.')  ,1)  );
+						if ( in_array($extension_upload,$extensions_valides) ) echo "Extension correcte";
+				
+					
+						  $resultat = move_uploaded_file($_FILES['icone']['tmp_name'],"./ressources/photosArticles/".$_FILES['icone']['name']);
+					   	  if (!$resultat) die("error");
+					   	  
+						 //print("Quelques informations sur le fichier récupéré :<br>");
+						//print("Nom : ".$_FILES["icone"]["name"]."<br>");
+						//print("Type : ".$_FILES["icone"]["type"]."<br>");
+						//print("Taille : ".$_FILES["icone"]["size"]."<br>");
+						//print("Tempname : ".$_FILES["icone"]["tmp_name"]."<br>");
+						$name = $_FILES["icone"]["name"];
+					/*	copy("./ressources/photosArticles/".$_FILES['icone']['name'],"./ressources/miniaturesArticles/$name");
+					
+					
+						$dataImg = getimagesize("./ressources/photosArticles/$name");  
+						$type= substr($dataImg["mime"],6);// on enleve "image/" 
+	
+						 //creation de la miniature
+						miniature($type,"./ressources/photosArticles/$name",200,"./ressources/miniaturesArticles/$name");
+	*/
+				
+					   	  
+				
+					   	  //on ajoute dans la bdd
+					
+							if($titre=valider("titre","POST"))//on teste le titre
 							{
-								// si le nouveau mot de passe est bien confirmé, et que l'ancien mot de passe correspond bien au MDP de l'utilisateur, alors on met à jour son MDP et on renvoie l'utilisateur sur son profil
-								updatemdp($new_pass,$iduser);
-								$addArgs="?view=profil&suc=2";
+								if(strlen($titre)<256)
+								{
+									if($contenu=valider("editor1","POST"))//on teste le contenu de l'article
+									{
+										if($_FILES['icone']['name']!="")//on teste l'image  ps: on a deja testé si le fichier existe au dessus
+										{
+											$lien=$_FILES['icone']['name'];
+											$date=date('Y-m-d H:i:s');//die($date);
+											creerArticle($titre,$date,$lien,$contenu);
+											
+										}
+									}
+								}
 							}
-							// si le mot de passe est mal confirmé ou que son ancien mot de passe n'est pas bon alors on renvoie l'utilisateur sur son profil avec un message d'erreur
-							else $addArgs="?view=profil&err=3";
-						}
-						else $addArgs="?view=profil&err=4";
-					}
-					else $addArgs="?view=profil&err=5";
-				}
-				else $addArgs="?view=profil&err=6";
-			break;
 
-			// Supprimer compte /////////////////////////////////////////////////////
-			case 'del_count' :
-				$iduser=$_SESSION["idUser"];
-				$pseudo=$_SESSION["pseudo"];
-				if ($pass=valider('pass'))
-				if ($conf_pass=valider('conf_pass'))
+				
+				  }
+			$addArgs="?view=actualite";
+
+			break;
+			case "suppArticle" :
+				//on va d'abbord récupérer le chemin de l'image associé à l'article pour pouvoir
+				//la supprimer sur le serveur
+				if($id_article=valider("id_article","POST"))
 				{
-					if($pass==$conf_pass)
+					$data=getCheminPhotoArticle($id_article);//on recupere le chemin avec une requete SQL
+					$chemin_photo=parcoursRs($data);
+					
+					$fichier=$chemin_photo[0]["lien_photo"];//contient le chemin du fichier a efface
+					$dossier_traite = "./ressources/photosArticles";//le dossier contenant mes images pour les articles
+					$repertoire = opendir($dossier_traite); // On définit le répertoire dans lequel on souhaite travailler.
+					 
+					// Si le fichier n'est pas un répertoire…
+					if ($fichier != ".." AND $fichier != "." AND !is_dir($fichier))
+					       {
+					
+					       unlink($fichier); // On efface.
+					       }
+				
+					closedir($repertoire); // Ne pas oublier de fermer le dossier ***EN DEHORS de la boucle*** ! Ce qui évitera à PHP beaucoup de calculs et des problèmes liés à l'ouverture du dossier.
+										
+					
+					deleteArticle($id_article);//enfin on supprime dans la base l'article
+				}
+			
+				$addArgs="?view=actualite";
+			break;
+			
+			
+			//////////////////////////////////////quizz////////////////////////////////////////////////////////////
+			case "supp_quest_img" :
+				
+				if($id_quest=valider("id_quest","POST"))
+				{
+					if($bonrep=valider("bonimg","POST"))
 					{
-						if (testmdp($pass,$iduser))
+					$bonrep="./ressources/photosQuizz/".$bonrep;
+					$dossier_traite = "./ressources/photosQuizz";//le dossier contenant mes images pour les articles
+					$repertoire = opendir($dossier_traite); // On définit le répertoire dans lequel on souhaite travailler.
+					 
+					// Si le fichier n'est pas un répertoire…
+					
+					if ($bonrep != ".." AND $bonrep != "." AND !is_dir($bonrep))
+					       {
+					       unlink($bonrep); // On efface.
+					       }
+				
+					closedir($repertoire); // Ne pas oublier de fermer le dossier ***EN DEHORS de la boucle*** ! Ce qui évitera à PHP beaucoup de calculs et des problèmes liés à l'ouverture du dossier.
+					}
+					
+					if($mauvrep0=valider("mauvimg0","POST"))
+					{
+					$mauvrep0="./ressources/photosQuizz/".$mauvrep0;
+					$dossier_traite = "./ressources/photosQuizz";//le dossier contenant mes images pour les articles
+					 
+					$repertoire = opendir($dossier_traite); // On définit le répertoire dans lequel on souhaite travailler.
+					 
+					// Si le fichier n'est pas un répertoire…
+					if ($$mauvrep0 != ".." AND $mauvrep0 != "." AND !is_dir($mauvrep0))
+					       {
+					       unlink($mauvrep0); // On efface.
+					       }
+				
+					closedir($repertoire); // Ne pas oublier de fermer le dossier ***EN DEHORS de la boucle*** ! Ce qui évitera à PHP beaucoup de calculs et des problèmes liés à l'ouverture du dossier.
+					}
+					
+					if($mauvrep1=valider("mauvimg1","POST"))
+					{
+					$mauvrep1="./ressources/photosQuizz/".$mauvrep1;
+					$dossier_traite = "./ressources/photosQuizz";//le dossier contenant mes images pour les articles
+					 
+					$repertoire = opendir($dossier_traite); // On définit le répertoire dans lequel on souhaite travailler.
+					 
+					// Si le fichier n'est pas un répertoire…
+					if ($mauvrep1 != ".." AND $mauvrep1 != "." AND !is_dir($mauvrep1))
+					       {
+					       unlink($mauvrep1); // On efface.
+					       }
+				
+					closedir($repertoire); // Ne pas oublier de fermer le dossier ***EN DEHORS de la boucle*** ! Ce qui évitera à PHP beaucoup de calculs et des problèmes liés à l'ouverture du dossier.
+					}
+					
+					if($mauvrep2=valider("mauvimg2","POST"))
+					{
+					$mauvrep2="./ressources/photosQuizz/".$mauvrep2;
+					$dossier_traite = "./ressources/photosQuizz";//le dossier contenant mes images pour les articles
+					 
+					$repertoire = opendir($dossier_traite); // On définit le répertoire dans lequel on souhaite travailler.
+					 
+					// Si le fichier n'est pas un répertoire…
+					if ($mauvrep2 != ".." AND $mauvrep2 != "." AND !is_dir($mauvrep2))
+					       {
+					       unlink($mauvrep2); // On efface.
+					       }
+				
+					closedir($repertoire); // Ne pas oublier de fermer le dossier ***EN DEHORS de la boucle*** ! Ce qui évitera à PHP beaucoup de calculs et des problèmes liés à l'ouverture du dossier.
+					}
+					
+					delete_reponses($id_quest);
+					delete_question($id_quest);
+				}
+			
+				$addArgs="?view=modifier";
+				
+			
+			
+			break;
+			case "soumettre" :
+				
+				if ($programme = valider("programme"))
+				{
+					if ($nom = valider("nom"))
+					{
+						$programme=$programme-1;
+						insertquizz($programme,$nom);
+						$addArgs="?view=quizzAdmin";
+					}	
+				}
+			break;
+			case 'supp_quizz' :
+			if ($id_quizz = valider("quizz"))
+					{
+						$id_quizz=$id_quizz-1;
+						delete_quizz($id_quizz);
+						$questions = select_questions_all($id_quizz);
+						foreach ($questions as $dataQuestions){
+							
+							$id=$dataQuestions['id_question'];
+							delete_reponses($id);
+							delete_question($id);
+						}
+						$addArgs="?view=quizzAdmin";
+					}		
+			break;
+			
+			case "creerQuestImage" :
+				if (!empty($_FILES["bon_rep"]))
+				{
+			
+					if (is_uploaded_file($_FILES["bon_rep"]["tmp_name"]))
+					{	
+						$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+						$extension_upload = strtolower(  substr(  strrchr($_FILES["bon_rep"]['name'], '.')  ,1)  );
+					
+	
+						if ( in_array($extension_upload,$extensions_valides) ) 
 						{
-							// si le mot de passe est bien confirmé, et que le mot de passe correspond bien au MDP de l'utilisateur, alors on supprime so compte et ses vdm
-							// on renvoie l'utilisateur sur la page d'acceuil avec un message de succès
-							delete_count($iduser);
-							delete_vdm($pseudo);
-							session_destroy();
-							$addArgs="?view=homepage&suc=1";
+							if ($id_quizz = valider("idQuizz"))
+							{
+								if ($question = valider("question"))
+								{
+									if (!empty($_FILES["mauv_rep1"]))
+									{
+								
+										if (is_uploaded_file($_FILES["mauv_rep1"]["tmp_name"]))
+										{	
+											$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+											$extension_upload = strtolower(  substr(  strrchr($_FILES["mauv_rep1"]['name'], '.')  ,1)  );
+										
+						
+											if ( in_array($extension_upload,$extensions_valides) ) 
+											{
+														echo("suis la");
+														$name1 = $_FILES["bon_rep"]["name"];
+														copy($_FILES["bon_rep"]["tmp_name"],"ressources/photosQuizz/$name1");
+														insert_question($question,$id_quizz,1);
+														echo("question ok");
+														insert_bonne_rep($name1,$question,1); 
+														$name = $_FILES["mauv_rep1"]["name"];
+														copy($_FILES["mauv_rep1"]["tmp_name"],"ressources/photosQuizz/$name");
+														insert_mauvaise_rep($name,$question,1); 
+														echo("muavaise rep1 ok");
+														if (!empty($_FILES["mauv_rep2"]))
+														{
+													
+															if (is_uploaded_file($_FILES["mauv_rep2"]["tmp_name"]))
+															{	
+																$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+																$extension_upload = strtolower(  substr(  strrchr($_FILES["mauv_rep2"]['name'], '.')  ,1)  );
+															
+											
+																if ( in_array($extension_upload,$extensions_valides) ) 
+																{
+																		$name2 = $_FILES["mauv_rep2"]["name"];
+																		copy($_FILES["mauv_rep2"]["tmp_name"],"ressources/photosQuizz/$name2");
+																		insert_mauvaise_rep($name2,$question,1);
+																}
+															}
+														}
+														if (!empty($_FILES["mauv_rep3"]))
+														{
+													
+															if (is_uploaded_file($_FILES["mauv_rep3"]["tmp_name"]))
+															{	
+																$extensions_valides = array( 'jpg' , 'jpeg' , 'gif' , 'png' );
+																$extension_upload = strtolower(  substr(  strrchr($_FILES["mauv_rep3"]['name'], '.')  ,1)  );
+															
+											
+																if ( in_array($extension_upload,$extensions_valides) ) 
+																{
+																		$name3 = $_FILES["mauv_rep3"]["name"];
+																		copy($_FILES["mauv_rep3"]["tmp_name"],"ressources/photosQuizz/$name3");
+																		insert_mauvaise_rep($name3,$question,1);
+																}
+															}
+														}
+											}
+											
+										}
+									
+									}
+								}
+							}
 						}
-						// si le mot de passe est mal confirmé ou que son ancien mot de passe n'est pas bon alors on renvoie l'utilisateur sur son profil avec un message d'erreur		
-						else $addArgs="?view=profil&err=7";
+						
 					}
-					else $addArgs="?view=profil&err=8";
+				
 				}
-				else $addArgs="?view=profil&err=9";
-			break;
+					$addArgs="?view=quizzAdmin";
 
-			// Rajouter catégorie /////////////////////////////////////////////////////
-			case 'plus_cat' :
-				if ($cat=valider('cat'))
-				{
-					$nbcat=nbcat();
-					// on calcule le nombre de catégories sélectionnable (les catégories dans lesquels nous pouvons publier), par exemple top, mes vdm2i ne sont pas des catégories sélectionnable
-					if ($nbcat<5)
-					{
-						if (catexist($cat)==0)
-						{
-							// si le nombre de catégories sélectionnable est inférieur à 5 (c'est le nombre de categorie selectionnable que nous avons prédéfinis) et que la catégorie ajoutée n'est pas déjà existante alors on rajoute la catégorie
-							// on renvoie l'utilisateur sur son profil avec un message de succès
-							ajoutercat($cat,$nbcat);
-							$addArgs="?view=profil&suc=3";
-						}
-						// si ces conditions ne sont pas respectés on redirige l'utilisateur sur son profil avec un message d'erreur
-						else $addArgs="?view=profil&err=13";				
-					}
-					else $addArgs="?view=profil&err=10";
-				}
-				else $addArgs="?view=profil&err=11";
 			break;
-
-			// Supprimer catégorie /////////////////////////////////////////////////////
-			case 'supp_cat' :
-				if ($cat=valider('cat'))
-				{
-					if (catexist($cat)==1)
-					{
-						// si la categorie à supprimer sélectionné est bien  valide et qu'elle existe alors on l'a supprime et on renvoie l'utilisateur sur son profil avec un message de succès
-						supprimercat($cat);
-						$addArgs="?view=profil&suc=4";
-					}
-					// si ces conditions ne sont pas respectés on redirige l'utilisateur sur son profil avec un message d'erreur
-					else $addArgs="?view=profil&err=14";			
-				}
-				else $addArgs="?view=profil&err=12";
-			break;
-
-			// Rechercher /////////////////////////////////////////////////////
-			case 'rechercher' :
-				// si la recherche est valide, on redirige l'utilisateur sur la page recherche avec les resultats correspondant à sa recherche
-				if ($recherche=valider('recherche')) $addArgs="?view=rechercher&search=".$recherche;
-				// sinon on renvoie l'utilisateur sur la page recherche avec un message d'erreur
-			 	else $addArgs="?view=rechercher&err=1";
-			break;
+			
 		}
+
 	}
+
 
 	// On redirige toujours vers la page index, mais on ne connait pas le répertoire de base
 	// On l'extrait donc du chemin du script courant : $_SERVER["PHP_SELF"]
 	// Par exemple, si $_SERVER["PHP_SELF"] vaut /chat/data.php, dirname($_SERVER["PHP_SELF"]) contient /chat
-	$urlBase = dirname($_SERVER["PHP_SELF"]) . "/index.php";
-	
+
+	// $urlBase = dirname($_SERVER["PHP_SELF"]) . "/index.php";
 	// On redirige vers la page index avec les bons arguments
+
+	$urlBase = '/index.php';
+
 	header("Location:" . $urlBase . $addArgs);
 
 	// On écrit seulement après cette entête
 	ob_end_flush();
-
+	
 ?>
+
+
+
+
+
+
+
+
+
+

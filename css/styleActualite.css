@@ -1,0 +1,12 @@
+.article
+{
+	border: lightgrey solid 1px;
+	width: 250px;
+	height: 250px;
+}
+
+.img
+{
+	width: 250px;
+	height: 250px;
+}

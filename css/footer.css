@@ -1,0 +1,137 @@
+#footer{
+         margin-top:10%; 
+         display : table-row; 
+         height: 1%;
+         background-color:#353a3f; 
+}
+
+
+.titre_footer{
+        font-family: 'Tajawal', sans-serif;
+        /*Cette police est à changer en fonction que celle définie dans html.css*/
+}
+
+
+
+/*.changement_mdp2{
+         
+}*/
+
+.changement_mdp2 label{
+         min-width: 250px; 
+         text-align:left;
+         
+}
+
+.form_mdp2 label{
+         display: block;
+         color:#D0EDF7;
+         
+}
+
+.form_mdp2 h2 {
+         margin:15px 0;
+         display: block; 
+         line-height: 1.5em; 
+         padding: 0 10px 
+         
+}
+
+.form_mdp2  h3 {
+         padding-top:1% ;
+         color:white;
+         padding-bottom:1% ;
+         font-size: 15px;
+         text-decoration: none;
+         
+}
+
+.form_mdp2 label {
+         font-size: 12px;
+         
+}
+
+.form_mdp2 label span { 
+         font-size:12px;
+         font-weight:bold; 
+         color:white; 
+         margin-left: 7px;
+         
+}
+
+.form_mdp2{
+         display: block;
+         width:90%;  
+         margin:auto; 
+         
+}
+
+.form_mdp2 div, .form_mdp2 form  {
+         display:block; 
+         position: relative; 
+         float:left;
+         width:50%;
+         height: 100%
+         
+}
+
+
+.info_contact2{
+         display: block; 
+         float:left; 
+         
+}
+
+
+.titre_CV{
+         display: block;
+         margin-left:30px; 
+         background-color: rgba(234, 163, 0,0.5); 
+         height:auto;
+         width:185px;
+         
+}
+
+
+.titre_CV h2 {
+         margin:15px 0;
+         display: block; 
+         line-height: 1.5em; 
+         padding: 0 10px;
+         
+}
+
+
+
+@media screen and (max-width:762px) {
+	
+	.form_mdp2 div, .form_mdp2 form  {
+	         display:block; 
+	         position: relative; 
+	         float:left;width:100%!important; 
+	         height: 100%
+	         
+	}
+	
+	.form_mdp2 h2 {
+	         margin:15px 0;
+	         display: block; 
+	         line-height: 1.5em; 
+	         padding: 0 10px 
+	         
+	}
+	
+	.changement_mdp2 {
+	         margin-top: 20px ; 
+	         
+	}
+	
+	iframe {
+	         width: 80%;
+	         height: 70%;
+	         margin:auto;
+	         display:block;
+	         background-color: #777;
+	         
+	}
+}

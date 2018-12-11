@@ -17,7 +17,6 @@
  */
 function valider($nom,$type="REQUEST")
 {	
-
 	switch($type)
 	{
 		case 'REQUEST': 
@@ -128,4 +127,47 @@ if (basename($_SERVER["PHP_SELF"]) != "index.php")
 	die("");
 }
 */
+
+
+function miniature($type,$nom,$dw,$nomMin)
+{
+	// Crée une miniature de l'image $nom
+	// de largeur $dw
+	// et l'enregistre dans le fichier $nomMin 
+         //die($nom);
+
+	// lecture de l'image d'origine, enregistrement dans la zone mémoire $im
+	switch($type)
+	{
+		case "jpeg" : $im =  imagecreatefromjpeg($nom);break;
+		case "png" : $im =  imagecreatefrompng($nom);break;
+		case "gif" : $im =  imagecreatefromgif($nom);break;		
+	}
+
+	$sw = imagesx($im); // largeur de l'image d'origine
+	$sh = imagesy($im); // hauteur de l'image d'origine
+	$dh = $dw * $sh / $sw;
+
+	$im2 = imagecreatetruecolor($dw, $dh);
+
+	$dst_x= 0;
+	$dst_y= 0;
+	$src_x= 0; 
+	$src_y= 0; 
+	$dst_w= $dw ; 
+	$dst_h= $dh ; 
+	$src_w= $sw ; 
+	$src_h= $sh ;
+
+	imagecopyresized ($im2,$im,$dst_x , $dst_y  , $src_x  , $src_y  , $dst_w  , $dst_h  , $src_w  , $src_h);
+	switch($type)
+	{
+		case "jpeg" : imagejpeg($im2,$nomMin);break;
+		case "png" : imagepng($im2,$nomMin);break;
+		case "gif" : imagegif($im2,$nomMin);break;		
+	}
+
+	imagedestroy($im);
+	imagedestroy($im2);
+}
 ?>

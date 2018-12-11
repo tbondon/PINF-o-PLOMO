@@ -1,0 +1,104 @@
+html, body {
+	height: 120%;
+	margin-top: 1%;
+	margin: 0; padding: 0;
+	
+	font-family: 'Tajawal', sans-serif;
+
+
+}
+body {
+	display : table;
+	width: 100%;
+	
+}
+
+.ConteneurGlobStat{
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	/* height: 350px; /* Un peu de hauteur pour que les éléments aient la place de bouger */
+}
+
+.ConteneurUnStat{
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+
+
+	/* height: 350px; /* Un peu de hauteur pour que les éléments aient la place de bouger */
+}
+.ConteneurUnStatAcc{
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+
+
+	/* height: 350px; /* Un peu de hauteur pour que les éléments aient la place de bouger */
+}
+.footercond
+{
+	display: inline-block;
+	width: 100%;
+	margin: auto;
+	color:white;
+	text-align: center;
+}
+.footercondElt
+{
+	color:white;
+	text-decoration: none;
+	text-align: center;
+    outline: none;
+}
+.footercondElt:visited
+{
+	color:white;
+	text-decoration: none;
+	text-align: center;
+    outline: none;
+}
+.footercondElt:hover
+{
+	color:grey;
+	text-decoration: none;
+	text-align: center;
+    outline: none;
+}
+.footercondElt:active
+{
+	color:white;
+	text-decoration: none;
+	text-align: center;
+    outline: none;
+}
+.CGVclass{
+  text-align: justify;
+  margin: 0 auto;
+  width: 75%;
+  font-size: 1em;
+  margin-bottom: 3%;
+}
+.CGVclass > p > strong{
+	margin-left: -2.5%;
+}
+ul.share-buttons{
+  list-style: none;
+  padding: 0;
+  line-height:40px;
+}
+ul.share-buttons .sr-only{
+  position: absolute;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  padding: 0;
+  border: 0;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}

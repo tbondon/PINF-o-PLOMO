@@ -1,0 +1,25 @@
+.question
+{
+	color: #13458f;
+	font-size: 2em;
+	
+}
+
+.reponse
+{
+	color: #f2bb40;
+	font-size: 1em;
+	
+}
+.faq
+{
+	margin-left: 10%;
+	margin-top: 100px;
+	width: auto;
+}
+
+#zoneFaq
+{
+	margin: 10px;
+	margin-bottom:100px;
+}
